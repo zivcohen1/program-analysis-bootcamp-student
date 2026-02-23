@@ -1,0 +1,3 @@
+(library
+ (name dead_code_ex)
+ (libraries shared_ast))

@@ -1,0 +1,3 @@
+(library
+ (name abstract_interp_ex)
+ (libraries abstract_domains shared_ast))

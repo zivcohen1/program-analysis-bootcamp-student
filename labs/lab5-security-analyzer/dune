@@ -1,0 +1,2 @@
+; By default, build the starter version of the lab.
+(dirs starter)

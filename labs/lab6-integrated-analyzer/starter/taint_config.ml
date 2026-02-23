@@ -1,0 +1,63 @@
+(** Taint security configuration (provided -- not a TODO).
+
+    Defines sources, sinks, and sanitizers for taint analysis. *)
+
+type source = { source_name : string }
+type sink = {
+  sink_name : string;
+  sink_param_index : int;
+  sink_vuln_type : string;
+}
+type sanitizer = {
+  sanitizer_name : string;
+  sanitizer_cleans : string list;
+}
+
+type config = {
+  sources : source list;
+  sinks : sink list;
+  sanitizers : sanitizer list;
+}
+
+let default_config : config = {
+  sources = [
+    { source_name = "get_param" };
+    { source_name = "read_cookie" };
+    { source_name = "read_input" };
+    { source_name = "read_file" };
+    { source_name = "get_header" };
+  ];
+  sinks = [
+    { sink_name = "exec_query"; sink_param_index = 0;
+      sink_vuln_type = "sql-injection" };
+    { sink_name = "send_response"; sink_param_index = 0;
+      sink_vuln_type = "xss" };
+    { sink_name = "exec_cmd"; sink_param_index = 0;
+      sink_vuln_type = "command-injection" };
+    { sink_name = "open_file"; sink_param_index = 0;
+      sink_vuln_type = "path-traversal" };
+    { sink_name = "redirect"; sink_param_index = 0;
+      sink_vuln_type = "open-redirect" };
+  ];
+  sanitizers = [
+    { sanitizer_name = "escape_sql";
+      sanitizer_cleans = ["sql-injection"] };
+    { sanitizer_name = "html_encode";
+      sanitizer_cleans = ["xss"] };
+    { sanitizer_name = "shell_escape";
+      sanitizer_cleans = ["command-injection"] };
+    { sanitizer_name = "validate_path";
+      sanitizer_cleans = ["path-traversal"] };
+    { sanitizer_name = "validate_url";
+      sanitizer_cleans = ["open-redirect"] };
+  ];
+}
+
+let is_source (config : config) (name : string) : bool =
+  List.exists (fun s -> s.source_name = name) config.sources
+
+let find_sink (config : config) (name : string) : sink option =
+  List.find_opt (fun s -> s.sink_name = name) config.sinks
+
+let find_sanitizer (config : config) (name : string) : sanitizer option =
+  List.find_opt (fun s -> s.sanitizer_name = name) config.sanitizers

@@ -1,0 +1,7 @@
+// A basic program with arithmetic and assignment.
+fun main() {
+  x = 1;
+  y = 2;
+  z = x + y * 3;
+  return z;
+}

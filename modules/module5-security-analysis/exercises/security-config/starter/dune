@@ -1,0 +1,3 @@
+(library
+ (name security_config_ex)
+ (libraries shared_ast))

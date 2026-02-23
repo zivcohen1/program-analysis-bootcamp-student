@@ -1,0 +1,3 @@
+(test
+ (name test_sign)
+ (libraries ounit2 abstract_domains sign_lattice_ex))

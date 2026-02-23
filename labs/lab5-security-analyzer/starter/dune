@@ -1,0 +1,3 @@
+(library
+ (name security_analyzer)
+ (libraries abstract_domains shared_ast))

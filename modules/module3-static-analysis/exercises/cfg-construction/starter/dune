@@ -1,0 +1,3 @@
+(library
+ (name cfg_exercises)
+ (libraries shared_ast))

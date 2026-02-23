@@ -1,0 +1,8 @@
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
+
+(library
+ (name minilang_parser)
+ (libraries shared_ast))

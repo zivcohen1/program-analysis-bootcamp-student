@@ -1,0 +1,13 @@
+{
+  "name": "calculator-bugs",
+  "version": "1.0.0",
+  "description": "Module 1 Exercise: Find bugs using static and dynamic analysis",
+  "main": "calculator.js",
+  "scripts": {
+    "lint": "eslint calculator.js",
+    "test": "node test-calculator.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  }
+}

@@ -1,0 +1,3 @@
+(library
+ (name galois_ex)
+ (libraries abstract_domains))

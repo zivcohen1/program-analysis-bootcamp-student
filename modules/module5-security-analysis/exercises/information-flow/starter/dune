@@ -1,0 +1,3 @@
+(library
+ (name info_flow_ex)
+ (libraries abstract_domains shared_ast))

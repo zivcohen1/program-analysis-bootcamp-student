@@ -1,0 +1,2 @@
+; By default, only build from starter/ and tests.
+(dirs starter tests)

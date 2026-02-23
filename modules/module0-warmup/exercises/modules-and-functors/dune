@@ -1,0 +1,2 @@
+; Module 0 exercises have no tests -- students run with dune exec.
+(dirs starter)

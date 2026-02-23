@@ -1,0 +1,3 @@
+(library
+ (name config_pipeline_ex)
+ (libraries abstract_domains shared_ast))

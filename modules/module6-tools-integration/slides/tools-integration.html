@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 6: Tools Implementation &amp; Integration</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --accent3: #16213e;
+    --code-bg: #f4f4f8;
+    --border: #ddd;
+    --shadow: rgba(0,0,0,0.08);
+    --green: #27ae60;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f0f5;
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* Slide container */
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 48px 64px;
+    background: var(--bg);
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+  /* Typography */
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+  /* Code */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 1em;
+    width: auto;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    text-align: left;
+  }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+
+  /* Diagram boxes */
+  .diagram {
+    background: var(--code-bg);
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+
+  /* Highlight boxes */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff5f7;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-green {
+    border-left: 4px solid var(--green);
+    background: #f0faf4;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-blue {
+    border-left: 4px solid var(--blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+
+  /* Two-column layout */
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+
+  /* Title slide */
+  .title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%);
+    color: white;
+  }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav button {
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+
+  /* Slide counter */
+  .counter {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    font-size: 0.9em;
+    color: #888;
+    z-index: 100;
+  }
+
+  /* Progress bar */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+
+  /* Badge styling */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+  }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+
+<div class="deck" id="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Tools Implementation &amp; Integration</h1>
+  <h2>Module 6 — Program Analysis Bootcamp</h2>
+  <p style="margin-top:24px; font-size:1.1em; opacity:0.7;">From individual analyses to integrated tools</p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <ol>
+    <li>Define <strong>unified finding types</strong> that standardize outputs across analysis passes</li>
+    <li>Implement <strong>dead code detection</strong> as a purely AST-level analysis</li>
+    <li>Build <strong>analysis passes</strong> using a record-based, composable architecture</li>
+    <li>Compose <strong>multiple analysis passes</strong> and merge results</li>
+    <li>Design <strong>configurable pipelines</strong> that select passes and filter findings</li>
+    <li>Generate <strong>structured reports</strong> in text and JSON formats</li>
+  </ol>
+</div>
+
+<!-- Slide 3: Prerequisites Review -->
+<div class="slide">
+  <h2>Prerequisites Review</h2>
+  <p>From Modules 2-5, you have built:</p>
+  <div class="cols">
+    <div>
+      <h3>M2: AST Foundation</h3>
+      <ul>
+        <li>Core types: <code>expr</code>, <code>stmt</code>, <code>program</code></li>
+        <li>Recursive AST traversal</li>
+      </ul>
+      <h3>M3: Dataflow</h3>
+      <ul>
+        <li>Lattices, monotone frameworks, fixpoint</li>
+      </ul>
+    </div>
+    <div>
+      <h3>M4: Abstract Interpretation</h3>
+      <ul>
+        <li><code>ABSTRACT_DOMAIN</code>, <code>MakeEnv</code>, sign domain</li>
+        <li>Division-by-zero detection</li>
+      </ul>
+      <h3>M5: Security Analysis</h3>
+      <ul>
+        <li>Taint domain, source/sink/sanitizer</li>
+        <li>Vulnerability detection</li>
+      </ul>
+    </div>
+  </div>
+  <pre><code>module type ABSTRACT_DOMAIN = sig
+  type t
+  val bottom : t      val top : t
+  val join : t -> t -> t
+  val meet : t -> t -> t
+  val leq  : t -> t -> bool
+  val widen : t -> t -> t
+  val to_string : t -> string
+end</code></pre>
+</div>
+
+<!-- Slide 4: The Leap: Individual Analyses to Integrated Tools -->
+<div class="slide">
+  <h2>The Leap: Individual Analyses to Integrated Tools</h2>
+  <p>Each module built a <strong>single-purpose analysis</strong>. Real tools run <strong>many analyses at once</strong>.</p>
+  <div class="diagram">Individual:    Safety ───→ [div-by-zero list]
+               Taint  ───→ [injection list]
+               Dead   ───→ [unreachable list]
+
+Integrated:    Program ───→ Pipeline ───→ [ALL findings, sorted, filtered, reported]</div>
+  <div class="callout-blue">
+    <strong>Why composition matters:</strong> Tools like Semgrep and CodeQL run hundreds of rules in a single scan. The value comes not from any one check, but from <strong>combining, prioritizing, and reporting</strong> results across all of them.
+  </div>
+</div>
+
+<!-- Slide 5: Motivating Example -->
+<div class="slide">
+  <h2>Motivating Example</h2>
+  <p>One program, <strong>three different bug classes</strong>:</p>
+  <pre><code>func handler(request):
+  user_input = get_param("q")          -- SOURCE (taint)
+  query = "SELECT * FROM t WHERE " + user_input
+  exec_query(query)                     -- SINK: SQL injection!
+
+  ratio = user_input / 0               -- Division by zero!
+
+  return ratio
+  dead_var = 42                         -- Dead code after return!
+  log(dead_var)</code></pre>
+  <div class="cols" style="margin-top:12px;">
+    <div class="callout"><span class="badge badge-critical">Security</span> Tainted data reaches <code>exec_query</code></div>
+    <div class="callout"><span class="badge badge-high">Safety</span> Division by literal zero</div>
+    <div class="callout"><span class="badge badge-medium">Quality</span> Unreachable code after <code>return</code></div>
+  </div>
+</div>
+
+<!-- Slide 6: Unified Finding Types -->
+<div class="slide">
+  <h2>Unified Finding Types</h2>
+  <h3>The problem: heterogeneous outputs</h3>
+  <ul>
+    <li>Safety pass produces <code>warning strings</code></li>
+    <li>Taint pass produces <code>vulnerability records</code></li>
+    <li>Dead code pass produces <code>location lists</code></li>
+  </ul>
+  <p>You cannot sort, filter, or deduplicate across passes when each has its own result type.</p>
+  <div class="callout-green">
+    <strong>Solution:</strong> A unified <code>finding</code> record type that all passes produce. This is the same idea behind SARIF (Static Analysis Results Interchange Format) used by real-world tools.
+  </div>
+  <div class="diagram">Safety pass  ──→ finding list ──┐
+Taint pass   ──→ finding list ──┤──→ merge ──→ sort ──→ filter ──→ report
+Dead code    ──→ finding list ──┘</div>
+</div>
+
+<!-- Slide 7: The Finding Record -->
+<div class="slide">
+  <h2>The Finding Record</h2>
+  <pre><code>type severity = Critical | High | Medium | Low | Info
+
+type category = Security | Safety | CodeQuality | Performance
+
+type finding = {
+  id         : int;
+  category   : category;
+  severity   : severity;
+  pass_name  : string;
+  location   : string;
+  message    : string;
+  suggestion : string option;
+}</code></pre>
+  <div class="cols" style="margin-top:12px;">
+    <div>
+      <h3>Severity levels</h3>
+      <ul>
+        <li><span class="badge badge-critical">Critical</span> Exploitable security flaw</li>
+        <li><span class="badge badge-high">High</span> Likely runtime crash</li>
+        <li><span class="badge badge-medium">Medium</span> Code quality issue</li>
+        <li><code>Low</code> / <code>Info</code> Suggestions</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Categories</h3>
+      <ul>
+        <li><strong>Security</strong>: injection, data leaks</li>
+        <li><strong>Safety</strong>: div-by-zero, null deref</li>
+        <li><strong>CodeQuality</strong>: dead code, unused vars</li>
+        <li><strong>Performance</strong>: redundant computation</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 8: Finding Operations -->
+<div class="slide">
+  <h2>Finding Operations</h2>
+  <pre><code>let severity_to_int = function
+  | Critical -> 0 | High -> 1 | Medium -> 2
+  | Low -> 3     | Info -> 4
+
+let compare_by_severity f1 f2 =
+  compare (severity_to_int f1.severity) (severity_to_int f2.severity)
+
+let filter_by_severity threshold findings =
+  let max_val = severity_to_int threshold in
+  List.filter (fun f -> severity_to_int f.severity <= max_val) findings
+
+let filter_by_category cats findings =
+  List.filter (fun f -> List.mem f.category cats) findings
+
+let deduplicate findings =
+  let key f = (f.message, f.location) in
+  let seen = Hashtbl.create 16 in
+  List.filter (fun f ->
+    if Hashtbl.mem seen (key f) then false
+    else (Hashtbl.add seen (key f) (); true)
+  ) findings</code></pre>
+  <div class="callout-blue">
+    <strong>Key insight:</strong> Because all passes return the same <code>finding</code> type, we write these operations <strong>once</strong> and they work across every analysis.
+  </div>
+</div>
+
+<!-- Slide 9: Analysis Pass Architecture -->
+<div class="slide">
+  <h2>Analysis Pass Architecture</h2>
+  <p>Each analysis is packaged as a <strong>record</strong> with a uniform interface:</p>
+  <pre><code>type analysis_pass = {
+  name     : string;
+  category : category;
+  run      : program -> finding list;
+}</code></pre>
+  <div class="cols" style="margin-top:16px;">
+    <div>
+      <h3>Benefits</h3>
+      <ul>
+        <li><strong>Uniform interface</strong>: every pass is <code>program -> finding list</code></li>
+        <li><strong>Composable</strong>: passes combine via list operations</li>
+        <li><strong>Configurable</strong>: enable/disable passes at runtime</li>
+        <li><strong>Extensible</strong>: add new passes without changing the pipeline</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Contrast: functor approach</h3>
+      <pre><code>(* Heavier, less flexible *)
+module type PASS = sig
+  val name : string
+  val run : program -> finding list
+end</code></pre>
+      <p>Records give us <strong>runtime flexibility</strong> that functors cannot.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 10: Dead Code Detection -->
+<div class="slide">
+  <h2>Dead Code Detection</h2>
+  <p>A <strong>purely AST-level</strong> analysis -- no abstract domains needed.</p>
+  <h3>What it detects:</h3>
+  <table>
+    <tr><th>Pattern</th><th>Description</th><th>Severity</th></tr>
+    <tr><td>Unreachable code after <code>Return</code></td><td>Statements after a return can never execute</td><td><span class="badge badge-medium">Medium</span></td></tr>
+    <tr><td>Unused variables</td><td>Assigned but never read in any expression</td><td><code>Low</code></td></tr>
+    <tr><td>Unused parameters</td><td>Function parameter never referenced in body</td><td><code>Info</code></td></tr>
+  </table>
+  <h3>Approach:</h3>
+  <ol>
+    <li>Walk the AST to find <code>Return</code> followed by more statements</li>
+    <li>Collect all <em>assigned</em> variables and all <em>used</em> variables</li>
+    <li>Unused = assigned - used (set difference)</li>
+  </ol>
+</div>
+
+<!-- Slide 11: Dead Code Worked Example -->
+<div class="slide">
+  <h2>Dead Code: Worked Example</h2>
+  <pre><code>func compute(a, b):
+  x = a + b
+  y = 42              -- y is assigned but never used
+  return x
+  z = x * 2           -- unreachable: after return
+  log(z)              -- unreachable: after return</code></pre>
+  <p><strong>Step 1:</strong> Scan for return + trailing statements:</p>
+  <ul>
+    <li>Found <code>return x</code> at line 4, followed by 2 statements → 2 unreachable findings</li>
+  </ul>
+  <p><strong>Step 2:</strong> Collect variable sets:</p>
+  <ul>
+    <li>Assigned: <code>{x, y, z}</code> &nbsp; Used: <code>{a, b, x, z}</code> &nbsp; Params: <code>{a, b}</code></li>
+    <li>Unused vars: <code>{y}</code> (assigned, never used in reachable code)</li>
+  </ul>
+  <div class="callout">
+    <strong>Result:</strong> 3 findings -- 2 unreachable code (Medium), 1 unused variable (Low)
+  </div>
+</div>
+
+<!-- Slide 12: Safety Analysis Pass -->
+<div class="slide">
+  <h2>Safety Analysis Pass</h2>
+  <p>Wraps the <strong>sign domain</strong> from Module 4 into the pass architecture:</p>
+  <pre><code>let safety_pass = {
+  name = "safety";
+  category = Safety;
+  run = fun program ->
+    List.concat_map (fun func ->
+      let env = SignDomain.analyze func in
+      check_divisions env func
+    ) program.functions
+}</code></pre>
+  <p><strong>Detection logic</strong> in <code>check_divisions</code>:</p>
+  <pre><code>| BinOp (Div, _e1, e2) ->
+  let divisor = eval_expr env e2 in
+  match divisor with
+  | Zero -> [make_finding ~sev:High ~msg:"Division by zero" ...]
+  | Top  -> [make_finding ~sev:Medium ~msg:"Possible division by zero" ...]
+  | _    -> []</code></pre>
+  <div class="callout-green">
+    The sign domain analysis is <strong>unchanged</strong> from Module 4. The pass just wraps it and converts results to <code>finding</code> records.
+  </div>
+</div>
+
+<!-- Slide 13: Security Analysis Pass -->
+<div class="slide">
+  <h2>Security Analysis Pass</h2>
+  <p>Wraps the <strong>taint domain</strong> from Module 5 into the pass architecture:</p>
+  <pre><code>let security_pass config = {
+  name = "taint";
+  category = Security;
+  run = fun program ->
+    List.concat_map (fun func ->
+      let env = TaintDomain.analyze config func in
+      check_sinks env config func
+    ) program.functions
+}</code></pre>
+  <p><strong>Detection logic</strong> in <code>check_sinks</code>:</p>
+  <pre><code>| Call (name, args) when is_sink config name ->
+  let sink = find_sink config name in
+  let arg_taint = eval_expr env (List.nth args sink.param_index) in
+  if is_potentially_tainted arg_taint then
+    [make_finding ~sev:Critical
+       ~msg:(sprintf "Tainted data reaches sink '%s'" name) ...]
+  else []</code></pre>
+  <div class="callout">
+    Security findings are <span class="badge badge-critical">Critical</span> because they represent exploitable vulnerabilities.
+  </div>
+</div>
+
+<!-- Slide 14: Multi-Pass Composition -->
+<div class="slide">
+  <h2>Multi-Pass Composition</h2>
+  <p>Running multiple passes on one program:</p>
+  <pre><code>let run_all_passes (passes : analysis_pass list) (prog : program)
+    : finding list =
+  let all_findings =
+    List.concat_map (fun pass -> pass.run prog) passes
+  in
+  let numbered =
+    List.mapi (fun i f -> { f with id = i + 1 }) all_findings
+  in
+  List.sort compare_by_severity numbered</code></pre>
+  <div class="diagram">          ┌─────────────┐
+          │   Program    │
+          └──────┬───────┘
+       ┌─────────┼─────────┐
+       v         v         v
+  [dead_code] [safety] [taint]
+       │         │         │
+       v         v         v
+  findings   findings  findings
+       └─────────┼─────────┘
+                 v
+         concat + sort + number
+                 │
+                 v
+         [unified finding list]</div>
+</div>
+
+<!-- Slide 15: Composing Results -->
+<div class="slide">
+  <h2>Composing Results</h2>
+  <div class="cols">
+    <div>
+      <h3>merge_findings</h3>
+      <pre><code>let merge_findings lists =
+  let all = List.concat lists in
+  let deduped = deduplicate all in
+  List.sort compare_by_severity
+    deduped</code></pre>
+      <p>Flatten, deduplicate, sort by severity (Critical first).</p>
+    </div>
+    <div>
+      <h3>partition_by_pass</h3>
+      <pre><code>let partition_by_pass findings =
+  let tbl = Hashtbl.create 8 in
+  List.iter (fun f ->
+    let prev = try Hashtbl.find tbl
+      f.pass_name with Not_found -> []
+    in
+    Hashtbl.replace tbl f.pass_name
+      (f :: prev)
+  ) findings;
+  tbl</code></pre>
+    </div>
+  </div>
+  <div class="callout-blue">
+    <strong>partition_by_pass</strong> groups findings by their originating analysis, useful for per-pass summaries in reports.
+  </div>
+</div>
+
+<!-- Slide 16: Multi-Pass Worked Example -->
+<div class="slide">
+  <h2>Multi-Pass Worked Example</h2>
+  <p>Running all 3 passes on the motivating example:</p>
+  <table style="width:100%;">
+    <tr><th>#</th><th>Severity</th><th>Category</th><th>Pass</th><th>Message</th></tr>
+    <tr><td>1</td><td><span class="badge badge-critical">Critical</span></td><td>Security</td><td>taint</td><td>Tainted data reaches sink 'exec_query' (sql-injection)</td></tr>
+    <tr><td>2</td><td><span class="badge badge-high">High</span></td><td>Safety</td><td>safety</td><td>Division by zero in 'handler'</td></tr>
+    <tr><td>3</td><td><span class="badge badge-medium">Medium</span></td><td>CodeQuality</td><td>dead_code</td><td>Unreachable code after return in 'handler'</td></tr>
+    <tr><td>4</td><td><span class="badge badge-medium">Medium</span></td><td>CodeQuality</td><td>dead_code</td><td>Unreachable code after return in 'handler'</td></tr>
+    <tr><td>5</td><td>Low</td><td>CodeQuality</td><td>dead_code</td><td>Unused variable 'dead_var' in 'handler'</td></tr>
+  </table>
+  <div class="callout-green">
+    <strong>Sorted by severity</strong> -- Critical first, Low last. One program, one scan, complete picture.
+  </div>
+</div>
+
+<!-- Slide 17: Configuration Types -->
+<div class="slide">
+  <h2>Configuration Types</h2>
+  <pre><code>type pass_id = DeadCode | Safety | Taint
+
+type pipeline_config = {
+  enabled_passes    : pass_id list;
+  min_severity      : severity;
+  max_findings      : int option;
+  target_categories : category list option;
+}</code></pre>
+  <div class="cols" style="margin-top:16px;">
+    <div>
+      <h3>Why configuration?</h3>
+      <ul>
+        <li>Different projects need different checks</li>
+        <li>CI pipelines may only care about Critical/High</li>
+        <li>Performance: skip expensive passes when not needed</li>
+        <li>Focus: filter to security-only or quality-only</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Default config</h3>
+      <pre><code>let default_config = {
+  enabled_passes =
+    [DeadCode; Safety; Taint];
+  min_severity = Low;
+  max_findings = None;
+  target_categories = None;
+}</code></pre>
+      <p>Run everything, show everything.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 18: Configuration-Driven Analysis -->
+<div class="slide">
+  <h2>Configuration-Driven Analysis</h2>
+  <p>Builder pattern for constructing configs:</p>
+  <pre><code>let config_with_passes passes config =
+  { config with enabled_passes = passes }
+
+let config_with_severity sev config =
+  { config with min_severity = sev }
+
+let config_with_max n config =
+  { config with max_findings = Some n }
+
+let config_with_categories cats config =
+  { config with target_categories = Some cats }</code></pre>
+  <p><strong>Chaining example:</strong></p>
+  <pre><code>let ci_config =
+  default_config
+  |> config_with_passes [Safety; Taint]
+  |> config_with_severity High
+  |> config_with_max 10</code></pre>
+  <div class="callout-green">
+    The pipeline operator <code>|></code> makes configuration read naturally: start from defaults, then customize.
+  </div>
+</div>
+
+<!-- Slide 19: Applying Filters -->
+<div class="slide">
+  <h2>Applying Filters</h2>
+  <pre><code>let apply_filters config findings =
+  findings
+  |> filter_by_severity config.min_severity
+  |> (fun fs -> match config.target_categories with
+      | None -> fs
+      | Some cats -> filter_by_category cats fs)
+  |> (fun fs -> match config.max_findings with
+      | None -> fs
+      | Some n -> take n fs)</code></pre>
+  <div class="diagram">  [all findings]
+       │
+       ├──→ filter_by_severity (min_severity = High)
+       │    drop: Medium, Low, Info
+       │
+       ├──→ filter_by_category (target = [Security; Safety])
+       │    drop: CodeQuality, Performance
+       │
+       ├──→ take max_findings (max = 10)
+       │    keep only first 10
+       │
+       v
+  [filtered findings]</div>
+  <div class="callout">
+    Filters apply <strong>in order</strong>: severity first (cheapest), then category, then cap.
+  </div>
+</div>
+
+<!-- Slide 20: Pipeline Architecture Diagram -->
+<div class="slide">
+  <h2>Pipeline Architecture</h2>
+  <div class="diagram" style="font-size:0.9em;">
+  Config ──→ build_pipeline ──→ [selected passes]
+                                       │
+  Program ─────────────────────────────→│
+                                        v
+                                 run_all_passes
+                                        │
+                                        v
+                                  [raw findings]
+                                        │
+                                 apply_filters(config)
+                                        │
+                                        v
+                                [filtered findings]
+                                        │
+                                  generate_report
+                                        │
+                                ┌───────┴───────┐
+                                v               v
+                          text report      JSON report</div>
+  <pre><code>let run_pipeline config program =
+  let passes = build_pipeline config in
+  let raw = run_all_passes passes program in
+  let filtered = apply_filters config raw in
+  generate_report program.name filtered</code></pre>
+</div>
+
+<!-- Slide 21: Pipeline Worked Example -->
+<div class="slide">
+  <h2>Pipeline Worked Example</h2>
+  <p><strong>Config:</strong> Safety + Taint only, min_severity = High, max 5 findings</p>
+  <pre><code>let config =
+  default_config
+  |> config_with_passes [Safety; Taint]
+  |> config_with_severity High
+  |> config_with_max 5</code></pre>
+  <p><strong>Execution trace:</strong></p>
+  <table style="width:100%;">
+    <tr><th>Step</th><th>Action</th><th>Findings</th></tr>
+    <tr><td>1</td><td>build_pipeline: select Safety + Taint passes</td><td>--</td></tr>
+    <tr><td>2</td><td>run safety pass</td><td>1 High (div-by-zero)</td></tr>
+    <tr><td>3</td><td>run taint pass</td><td>1 Critical (sql-injection)</td></tr>
+    <tr><td>4</td><td>merge + sort by severity</td><td>[Critical, High]</td></tr>
+    <tr><td>5</td><td>filter_by_severity(High): keep Critical + High</td><td>[Critical, High]</td></tr>
+    <tr><td>6</td><td>max_findings(5): 2 &lt; 5, keep all</td><td>[Critical, High]</td></tr>
+  </table>
+  <div class="callout-blue">
+    Dead code findings were <strong>never generated</strong> -- the pass was not enabled. The 3 dead code findings from before are gone, saving analysis time.
+  </div>
+</div>
+
+<!-- Slide 22: Reporting: Why Structured Output -->
+<div class="slide">
+  <h2>Reporting: Why Structured Output?</h2>
+  <p>Different consumers need different formats:</p>
+  <table style="width:100%;">
+    <tr><th>Consumer</th><th>Needs</th><th>Format</th></tr>
+    <tr><td>Developer at terminal</td><td>Quick scan, actionable info</td><td><strong>Text</strong></td></tr>
+    <tr><td>CI/CD pipeline</td><td>Machine-parseable, exit codes</td><td><strong>JSON</strong></td></tr>
+    <tr><td>Engineering manager</td><td>Summary counts, trends</td><td><strong>Summary stats</strong></td></tr>
+    <tr><td>Security dashboard</td><td>Severity breakdown, categories</td><td><strong>Structured data</strong></td></tr>
+  </table>
+  <div class="callout-green">
+    A good analysis tool produces <strong>data</strong>, not just text. Structured output enables automation, integration, and aggregation.
+  </div>
+</div>
+
+<!-- Slide 23: Text Report Format -->
+<div class="slide">
+  <h2>Text Report Format</h2>
+  <pre><code>=== Analysis Report: handler ===
+Total findings: 3
+
+[CRITICAL] Security - taint
+  Tainted data reaches sink 'exec_query' (sql-injection)
+  Location: handler
+  Suggestion: Use parameterized queries or apply escape_sql
+
+[HIGH] Safety - safety
+  Division by zero in expression
+  Location: handler
+  Suggestion: Add zero-check guard before division
+
+[MEDIUM] CodeQuality - dead_code
+  Unreachable code after return statement
+  Location: handler
+  Suggestion: Remove dead code or restructure control flow
+
+=== Summary ===
+  Critical: 1  High: 1  Medium: 1  Low: 0  Info: 0</code></pre>
+  <div class="callout-blue">
+    Human-readable, scannable. Severity badge + category + pass name on every finding.
+  </div>
+</div>
+
+<!-- Slide 24: JSON Report Format -->
+<div class="slide">
+  <h2>JSON Report Format</h2>
+  <pre><code>{
+  "program": "handler",
+  "total_findings": 3,
+  "findings": [
+    {
+      "id": 1,
+      "severity": "Critical",
+      "category": "Security",
+      "pass": "taint",
+      "location": "handler",
+      "message": "Tainted data reaches sink 'exec_query'",
+      "suggestion": "Use parameterized queries"
+    },
+    ...
+  ],
+  "severity_counts": {
+    "Critical": 1, "High": 1, "Medium": 1, "Low": 0, "Info": 0
+  },
+  "category_counts": {
+    "Security": 1, "Safety": 1, "CodeQuality": 1
+  }
+}</code></pre>
+  <div class="callout">
+    Machine-parseable. CI systems can fail builds when <code>severity_counts.Critical > 0</code>.
+  </div>
+</div>
+
+<!-- Slide 25: Report Statistics -->
+<div class="slide">
+  <h2>Report Statistics</h2>
+  <pre><code>type report = {
+  program_name    : string;
+  findings        : finding list;
+  total_findings  : int;
+  severity_counts : (severity * int) list;
+  category_counts : (category * int) list;
+  pass_counts     : (string * int) list;
+}
+
+let build_report prog_name findings =
+  let count_by f =
+    let tbl = Hashtbl.create 8 in
+    List.iter (fun finding ->
+      let key = f finding in
+      let prev = try Hashtbl.find tbl key with Not_found -> 0 in
+      Hashtbl.replace tbl key (prev + 1)
+    ) findings;
+    Hashtbl.fold (fun k v acc -> (k, v) :: acc) tbl []
+  in
+  { program_name = prog_name;
+    findings;
+    total_findings = List.length findings;
+    severity_counts = count_by (fun f -> f.severity);
+    category_counts = count_by (fun f -> f.category);
+    pass_counts     = count_by (fun f -> f.pass_name) }</code></pre>
+</div>
+
+<!-- Slide 26: Putting It All Together -->
+<div class="slide">
+  <h2>Putting It All Together</h2>
+  <div class="diagram" style="font-size:0.85em;">
+                        ┌──────────────┐
+                        │  Source Code  │
+                        └──────┬───────┘
+                               v
+                        ┌──────────────┐
+                        │   Parse AST  │
+                        └──────┬───────┘
+                               v
+     ┌────────────┐    ┌──────────────┐
+     │   Config   │───→│build_pipeline│
+     └────────────┘    └──────┬───────┘
+                               v
+              ┌────────────────┼────────────────┐
+              v                v                v
+      ┌─────────────┐  ┌────────────┐  ┌──────────────┐
+      │  Dead Code   │  │   Safety   │  │   Security   │
+      │  (AST-only)  │  │(sign domain│  │(taint domain)│
+      └──────┬───────┘  └─────┬──────┘  └──────┬───────┘
+              v                v                v
+         [findings]       [findings]       [findings]
+              └────────────────┼────────────────┘
+                               v
+                       ┌──────────────┐
+                       │ apply_filters│
+                       └──────┬───────┘
+                               v
+                       ┌──────────────┐
+                       │ build_report │
+                       └──────┬───────┘
+                          ┌───┴───┐
+                          v       v
+                       [text]  [JSON]</div>
+</div>
+
+<!-- Slide 27: Real-World Tools Comparison -->
+<div class="slide">
+  <h2>Real-World Tools Comparison</h2>
+  <table style="width:100%;">
+    <tr><th>Aspect</th><th>Our Pipeline</th><th>Semgrep</th><th>CodeQL</th><th>SonarQube</th></tr>
+    <tr><td><strong>Rules</strong></td><td>OCaml passes</td><td>YAML patterns</td><td>QL queries</td><td>Java plugins</td></tr>
+    <tr><td><strong>Config</strong></td><td>OCaml records</td><td>YAML files</td><td>Query suites</td><td>Quality profiles</td></tr>
+    <tr><td><strong>Output</strong></td><td>Text + JSON</td><td>JSON + SARIF</td><td>SARIF + CSV</td><td>Dashboard + API</td></tr>
+    <tr><td><strong>Composition</strong></td><td>Pass list</td><td>Rule registry</td><td>Query packs</td><td>Rule sets</td></tr>
+    <tr><td><strong>Filtering</strong></td><td>Severity + category</td><td>Severity + path</td><td>Precision + problem</td><td>Severity + scope</td></tr>
+  </table>
+  <div class="callout-blue">
+    <strong>Same architecture, different scale.</strong> Our pipeline implements the same patterns that production tools use: modular analyses, unified results, configurable execution, structured output. The difference is scale (100s of rules vs. 3) and language support.
+  </div>
+</div>
+
+<!-- Slide 28: Summary + Key Takeaways -->
+<div class="slide">
+  <h2>Summary + Key Takeaways</h2>
+  <ol>
+    <li><strong>Unified finding types</strong> enable composition -- all passes speak the same language, so we can sort, filter, and deduplicate across analyses</li>
+    <li><strong>Dead code detection</strong> is a purely AST-level analysis -- no abstract domains needed, showing that not all useful analyses require heavy machinery</li>
+    <li><strong>Record-based passes</strong> enable modularity -- each pass is a value with a uniform <code>program -> finding list</code> interface</li>
+    <li><strong>Multi-pass composition</strong> combines independent analyses -- each pass runs on the same AST, results are merged</li>
+    <li><strong>Configuration</strong> enables flexibility -- select passes, set severity thresholds, cap output, filter by category</li>
+    <li><strong>Structured reports</strong> serve diverse consumers -- text for developers, JSON for CI, statistics for managers</li>
+  </ol>
+  <div class="callout-green" style="margin-top:16px;">
+    <strong>The meta-lesson:</strong> Good abstractions (unified types, uniform interfaces, composable records) turn a collection of individual analyses into an integrated tool. This is how real-world static analysis tools are built.
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  function go(d) { show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+
+  // Touch swipe support
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>

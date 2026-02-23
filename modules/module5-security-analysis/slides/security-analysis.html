@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 5: Security Analysis</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --accent3: #16213e;
+    --code-bg: #f4f4f8;
+    --border: #ddd;
+    --shadow: rgba(0,0,0,0.08);
+    --green: #27ae60;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f0f5;
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* Slide container */
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 48px 64px;
+    background: var(--bg);
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+  /* Typography */
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+  /* Code */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 1em;
+    width: auto;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    text-align: left;
+  }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+
+  /* Diagram boxes */
+  .diagram {
+    background: var(--code-bg);
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+
+  /* Highlight boxes */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff5f7;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-green {
+    border-left: 4px solid var(--green);
+    background: #f0faf4;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-blue {
+    border-left: 4px solid var(--blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+
+  /* Two-column layout */
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+
+  /* Title slide */
+  .title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%);
+    color: white;
+  }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav button {
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+
+  /* Slide counter */
+  .counter {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    font-size: 0.9em;
+    color: #888;
+    z-index: 100;
+  }
+
+  /* Progress bar */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+
+  /* Badge styling */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+  }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+
+<div class="deck" id="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Security Analysis</h1>
+  <h2>Module 5 — Program Analysis Bootcamp</h2>
+  <p style="margin-top:24px; font-size:1.1em; opacity:0.7;">From numeric properties to security properties</p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <ol>
+    <li>Implement a <strong>taint lattice</strong> satisfying <code>ABSTRACT_DOMAIN</code></li>
+    <li>Define <strong>security configurations</strong> (sources, sinks, sanitizers)</li>
+    <li>Build <strong>forward taint propagation</strong> using abstract transfer functions</li>
+    <li>Track <strong>implicit information flows</strong> via program-counter taint</li>
+    <li>Detect <strong>OWASP vulnerability patterns</strong> (SQLi, XSS, cmd injection)</li>
+    <li>Evaluate <strong>precision and limitations</strong> of taint analysis</li>
+  </ol>
+</div>
+
+<!-- Slide 3: Prerequisites Review -->
+<div class="slide">
+  <h2>Prerequisites Review</h2>
+  <p>From Module 4, you already know:</p>
+  <pre><code>module type ABSTRACT_DOMAIN = sig
+  type t
+  val bottom : t      val top : t
+  val join : t -> t -> t
+  val meet : t -> t -> t
+  val leq  : t -> t -> bool
+  val widen : t -> t -> t
+  val to_string : t -> string
+end</code></pre>
+  <ul>
+    <li><code>MakeEnv(D)</code>: variable → abstract value maps</li>
+    <li><code>eval_expr</code>: recursive expression evaluation</li>
+    <li><code>transfer_stmt</code>: statement-level abstract transformers</li>
+  </ul>
+</div>
+
+<!-- Slide 4: The Leap from Module 4 -->
+<div class="slide">
+  <h2>The Leap from Module 4</h2>
+  <div class="cols">
+    <div>
+      <h3>Module 4: What numeric value?</h3>
+      <ul>
+        <li>Sign domain: <code>{Bot, Neg, Zero, Pos, Top}</code></li>
+        <li>Interval domain: <code>[lo, hi]</code></li>
+        <li>Detects: division by zero, overflow</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Module 5: Where does data come from?</h3>
+      <ul>
+        <li>Taint domain: <code>{Bot, Untainted, Tainted, Top}</code></li>
+        <li>Tracks: data provenance and trust</li>
+        <li>Detects: injection attacks, data leaks</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout-blue" style="margin-top:20px;">
+    <strong>Same infrastructure, different question!</strong> The ABSTRACT_DOMAIN signature, MakeEnv functor, eval_expr, and transfer_stmt all carry over unchanged.
+  </div>
+</div>
+
+<!-- Slide 5: Motivating Example -->
+<div class="slide">
+  <h2>Motivating Example: SQL Injection</h2>
+  <pre><code>user_input = get_param("name")                           -- SOURCE
+query = "SELECT * FROM users WHERE name = '" + user_input + "'"
+exec_query(query)                                         -- SINK</code></pre>
+  <p>If <code>user_input = "'; DROP TABLE users; --"</code>:</p>
+  <pre><code>SELECT * FROM users WHERE name = ''; DROP TABLE users; --'</code></pre>
+  <div class="callout">
+    <strong>Taint analysis detects this:</strong> <code>get_param</code> → tainted → flows to <code>exec_query</code> = <span class="badge badge-critical">VULNERABILITY</span>
+  </div>
+</div>
+
+<!-- Slide 6: Taint Analysis Core Idea -->
+<div class="slide">
+  <h2>Taint Analysis Core Idea</h2>
+  <div class="diagram">  Source              Propagation              Sink
+  ──────              ───────────              ────
+  get_param()  ──→  x = source_val    ──→  exec_query(x)
+  read_cookie()      y = x + z              send_response(y)
+  read_input()       z = f(x)               exec_cmd(z)
+       │                  │                       │
+   [Tainted]      [Tainted spreads]     [Check: tainted arg?]
+                                        [YES → vulnerability!]</div>
+  <p><strong>Three-phase pipeline:</strong></p>
+  <ol>
+    <li><strong>Source</strong> introduces taint</li>
+    <li><strong>Propagation</strong> spreads taint through computation</li>
+    <li><strong>Sink</strong> checks for tainted arguments</li>
+  </ol>
+</div>
+
+<!-- Slide 7: Sources, Sinks, Sanitizers -->
+<div class="slide">
+  <h2>Sources, Sinks, Sanitizers</h2>
+  <table>
+    <tr><th>Category</th><th>Examples</th><th>OWASP Relevance</th></tr>
+    <tr><td><strong>Sources</strong></td><td><code>get_param</code>, <code>read_cookie</code>, <code>read_input</code></td><td>Untrusted input entry points</td></tr>
+    <tr><td><strong>Sinks</strong></td><td><code>exec_query</code>, <code>exec_cmd</code>, <code>send_response</code></td><td>Security-sensitive operations</td></tr>
+    <tr><td><strong>Sanitizers</strong></td><td><code>escape_sql</code>, <code>html_encode</code>, <code>shell_escape</code></td><td>Input validation / encoding</td></tr>
+  </table>
+  <div class="callout-green">
+    Sources <strong>create</strong> taint, sinks <strong>consume</strong> (and check) it, sanitizers <strong>remove</strong> it.
+  </div>
+</div>
+
+<!-- Slide 8: The Taint Lattice -->
+<div class="slide">
+  <h2>The Taint Lattice</h2>
+  <div class="cols">
+    <div>
+      <div class="diagram" style="text-align:center; font-size:1.1em;">
+        Top
+       ╱   ╲
+  Tainted  Untainted
+       ╲   ╱
+        Bot</div>
+    </div>
+    <div>
+      <ul>
+        <li><strong>Bot</strong>: unreachable code (no information)</li>
+        <li><strong>Untainted</strong>: definitely clean data</li>
+        <li><strong>Tainted</strong>: definitely from untrusted source</li>
+        <li><strong>Top</strong>: unknown — could be either<br>(conservative: treat as tainted)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout-blue">
+    This is a <strong>flat lattice</strong>, just like the sign domain! Same structure, different interpretation.
+  </div>
+</div>
+
+<!-- Slide 9: Taint Lattice Operations -->
+<div class="slide">
+  <h2>Taint Lattice Operations</h2>
+  <p><strong>Join</strong> (least upper bound):</p>
+  <table>
+    <tr><th>join</th><th>Bot</th><th>Untainted</th><th>Tainted</th><th>Top</th></tr>
+    <tr><td><strong>Bot</strong></td><td>Bot</td><td>Untainted</td><td>Tainted</td><td>Top</td></tr>
+    <tr><td><strong>Untainted</strong></td><td>Untainted</td><td>Untainted</td><td>Top</td><td>Top</td></tr>
+    <tr><td><strong>Tainted</strong></td><td>Tainted</td><td>Top</td><td>Tainted</td><td>Top</td></tr>
+    <tr><td><strong>Top</strong></td><td>Top</td><td>Top</td><td>Top</td><td>Top</td></tr>
+  </table>
+  <ul>
+    <li><code>join Tainted Untainted = Top</code> (might be either → treat as tainted)</li>
+    <li><code>widen = join</code> (finite lattice, no special widening needed)</li>
+  </ul>
+</div>
+
+<!-- Slide 10: Taint vs Sign Lattice -->
+<div class="slide">
+  <h2>Taint Lattice vs Sign Lattice</h2>
+  <div class="cols">
+    <div>
+      <h3>Sign Domain</h3>
+      <div class="diagram" style="text-align:center;">
+      Top
+     ╱ │ ╲
+   Neg Zero Pos
+     ╲ │ ╱
+      Bot</div>
+      <p>"What <em>value</em> does x hold?"</p>
+    </div>
+    <div>
+      <h3>Taint Domain</h3>
+      <div class="diagram" style="text-align:center;">
+        Top
+       ╱   ╲
+  Tainted  Untainted
+       ╲   ╱
+        Bot</div>
+      <p>"What <em>trust level</em> does x have?"</p>
+    </div>
+  </div>
+  <div class="callout-blue">
+    Both are <strong>flat lattices</strong> satisfying <code>ABSTRACT_DOMAIN</code>. Same <code>join</code>, <code>meet</code>, <code>leq</code> patterns — different interpretation!
+  </div>
+</div>
+
+<!-- Slide 11: Security Configuration -->
+<div class="slide">
+  <h2>Security Configuration</h2>
+  <pre><code>type source = {
+  source_name : string;        (* e.g. "get_param" *)
+  source_description : string;
+}
+
+type sink = {
+  sink_name : string;          (* e.g. "exec_query" *)
+  sink_param_index : int;      (* which arg to check *)
+  sink_vuln_type : string;     (* e.g. "sql-injection" *)
+}
+
+type sanitizer = {
+  sanitizer_name : string;     (* e.g. "escape_sql" *)
+  sanitizer_cleans : string list;  (* ["sql-injection"] *)
+}</code></pre>
+  <div class="callout-green">
+    Matched against <code>Call(name, args)</code> AST nodes — <strong>no AST changes needed!</strong>
+  </div>
+</div>
+
+<!-- Slide 12: Forward Taint Propagation -->
+<div class="slide">
+  <h2>Forward Taint Propagation</h2>
+  <p><strong>Expression evaluation rules:</strong></p>
+  <table>
+    <tr><th>Expression</th><th>Taint Rule</th></tr>
+    <tr><td><code>IntLit n</code></td><td>→ Untainted (constants are clean)</td></tr>
+    <tr><td><code>BoolLit b</code></td><td>→ Untainted</td></tr>
+    <tr><td><code>Var x</code></td><td>→ <code>lookup x env</code></td></tr>
+    <tr><td><code>BinOp(op, e1, e2)</code></td><td>→ <code>propagate (eval e1) (eval e2)</code></td></tr>
+    <tr><td><code>UnaryOp(op, e)</code></td><td>→ <code>eval e</code></td></tr>
+    <tr><td><code>Call(source, _)</code></td><td>→ <em>Tainted</em> (if source in config)</td></tr>
+    <tr><td><code>Call(sanitizer, _)</code></td><td>→ Untainted (if sanitizer in config)</td></tr>
+    <tr><td><code>Call(other, _)</code></td><td>→ Top (unknown function)</td></tr>
+  </table>
+  <div class="callout">
+    <strong>Key insight:</strong> taint propagates through binary operations — if <em>either</em> operand is tainted, the result is tainted.
+  </div>
+</div>
+
+<!-- Slide 13: Propagation Worked Example -->
+<div class="slide">
+  <h2>Propagation Worked Example</h2>
+  <pre><code>1: input  = get_param("q")       -- input: Tainted (source)
+2: prefix = "SELECT * WHERE "    -- prefix: Untainted (literal)
+3: query  = prefix + input       -- query: Tainted (propagation!)
+4: safe   = escape_sql(input)    -- safe: Untainted (sanitizer)
+5: safe_q = prefix + safe        -- safe_q: Untainted
+6: exec_query(query)             -- VULNERABILITY: tainted at sink!</code></pre>
+  <p><strong>Step-by-step environment:</strong></p>
+  <pre><code>After 1: {input → Tainted}
+After 2: {input → Tainted, prefix → Untainted}
+After 3: {... query → Tainted}      ← propagate(Untainted, Tainted) = Tainted
+After 4: {... safe → Untainted}     ← sanitizer cleans taint
+After 5: {... safe_q → Untainted}   ← propagate(Untainted, Untainted) = Untainted
+Line  6: exec_query(query) → query is Tainted → ALERT!</code></pre>
+</div>
+
+<!-- Slide 14: Taint Transfer Functions -->
+<div class="slide">
+  <h2>Taint Transfer Functions</h2>
+  <pre><code>let transfer_stmt env stmt =
+  match stmt with
+  | Assign (x, e) ->
+    let v = eval_expr env e in
+    Env.update x v env
+
+  | If (_cond, then_body, else_body) ->
+    let env_t = transfer_stmts env then_body in
+    let env_e = transfer_stmts env else_body in
+    Env.join env_t env_e
+
+  | While (_cond, body) ->
+    (* fixpoint with widening — same as Module 4 *)
+    let rec fixpoint env_in n = ... in
+    fixpoint env 0</code></pre>
+  <div class="callout-blue">
+    <strong>Same structure as Module 4's abstract interpreter</strong> — the domain changed, not the algorithm!
+  </div>
+</div>
+
+<!-- Slide 15: Vulnerability Detection -->
+<div class="slide">
+  <h2>Vulnerability Detection</h2>
+  <p>At each <code>Call(name, args)</code> that is a <strong>sink</strong>:</p>
+  <pre><code>let check_call env config func_name call_name args =
+  match find_sink config call_name with
+  | None   -> []      (* not a sink, no check needed *)
+  | Some sink ->
+    let arg = List.nth args sink.sink_param_index in
+    let taint = eval_expr env arg in
+    if is_potentially_tainted taint then
+      [{ vuln_type = sink.sink_vuln_type;
+         location  = func_name;
+         sink_name = call_name; ... }]
+    else []</code></pre>
+  <div class="callout">
+    If tainted data reaches a sink → report a <span class="badge badge-critical">vulnerability</span>
+  </div>
+</div>
+
+<!-- Slide 16: Sanitizers -->
+<div class="slide">
+  <h2>Sanitizers: Cleaning Taint</h2>
+  <pre><code>input = get_param("q")         -- Tainted
+safe  = escape_sql(input)      -- Untainted (sanitizer!)
+exec_query(safe)               -- OK: clean data at sink</code></pre>
+  <p>Sanitizer rule in <code>eval_expr</code>:</p>
+  <pre><code>| Call (name, _) when is_sanitizer config name ->
+    Untainted    (* sanitizer output is clean *)</code></pre>
+  <div class="callout">
+    But sanitizers are <strong>vulnerability-type-specific</strong>:
+    <ul>
+      <li><code>escape_sql</code> cleans <strong>sql-injection</strong> but NOT xss</li>
+      <li><code>html_encode</code> cleans <strong>xss</strong> but NOT sql-injection</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 17: Sanitizer Effectiveness -->
+<div class="slide">
+  <h2>Sanitizer Effectiveness</h2>
+  <table>
+    <tr><th>Sanitizer</th><th>Cleans</th><th>Does NOT Clean</th></tr>
+    <tr><td><code>escape_sql</code></td><td>sql-injection</td><td>xss, command-injection</td></tr>
+    <tr><td><code>html_encode</code></td><td>xss</td><td>sql-injection, command-injection</td></tr>
+    <tr><td><code>shell_escape</code></td><td>command-injection</td><td>sql-injection, xss</td></tr>
+    <tr><td><code>validate_path</code></td><td>path-traversal</td><td>sql-injection, xss</td></tr>
+    <tr><td><code>validate_url</code></td><td>open-redirect</td><td>sql-injection, xss</td></tr>
+  </table>
+  <div class="callout">
+    A sanitizer is only effective if it cleans the <strong>specific vulnerability type</strong> checked by the sink.
+  </div>
+</div>
+
+<!-- Slide 18: Explicit Flow -->
+<div class="slide">
+  <h2>Information Flow: Explicit</h2>
+  <p><strong>Explicit flow</strong>: data dependency (direct assignment)</p>
+  <pre><code>secret = get_param("password")   -- Tainted
+x = secret                        -- Tainted (explicit flow)
+y = x + 1                         -- Tainted (propagation)</code></pre>
+  <p>This is what standard taint propagation tracks.</p>
+  <div class="callout-green">
+    The taint follows the <strong>data</strong> — wherever the value goes, taint goes.
+  </div>
+</div>
+
+<!-- Slide 19: Implicit Flow -->
+<div class="slide">
+  <h2>Information Flow: Implicit</h2>
+  <p><strong>Implicit flow</strong>: control dependency</p>
+  <pre><code>secret = get_param("pin")    -- Tainted
+if secret == 1234:
+    x = 1                    -- x gets info about secret!
+else:
+    x = 0                    -- x gets info about secret!</code></pre>
+  <p>After this code, <code>x</code> reveals whether <code>secret == 1234</code>.</p>
+  <div class="callout">
+    The value of <code>secret</code> <strong>influences</strong> <code>x</code> through the branch condition, not through direct assignment. Standard taint propagation <strong>misses</strong> this!
+  </div>
+</div>
+
+<!-- Slide 20: Handling Implicit Flows -->
+<div class="slide">
+  <h2>Handling Implicit Flows</h2>
+  <p><strong>Program-counter taint</strong> (<code>pc_taint</code>): tracks whether we're inside a branch controlled by tainted data.</p>
+  <pre><code>let transfer_stmt ~pc_taint env stmt =
+  match stmt with
+  | Assign (x, e) ->
+    let v = eval_expr env e in
+    let v' = propagate v pc_taint in  (* combine with pc_taint! *)
+    Env.update x v' env
+  | If (cond, then_b, else_b) ->
+    let cond_taint = eval_expr env cond in
+    let new_pc = propagate pc_taint cond_taint in
+    let env_t = transfer_stmts ~pc_taint:new_pc env then_b in
+    let env_e = transfer_stmts ~pc_taint:new_pc env else_b in
+    Env.join env_t env_e</code></pre>
+  <div class="callout-blue">
+    When the branch condition is tainted, <strong>every assignment inside the branch is tainted</strong>.
+  </div>
+</div>
+
+<!-- Slide 21: Implicit Flows Worked Example -->
+<div class="slide">
+  <h2>Implicit Flows Worked Example</h2>
+  <pre><code>1: secret = get_param("pin")    -- {secret: Tainted}, pc: Untainted
+2: if secret == 1234:           -- cond_taint: Tainted
+3:     x = 1                    -- pc_taint: Tainted → x: Tainted!
+4: else:
+5:     x = 0                    -- pc_taint: Tainted → x: Tainted!
+6: y = x                        -- pc: Untainted, y: Tainted (from x)</code></pre>
+  <div class="cols" style="margin-top:16px;">
+    <div class="callout">
+      <strong>Without pc_taint:</strong> <code>x = 1</code> makes x Untainted (it's a literal). <strong>Wrong!</strong>
+    </div>
+    <div class="callout-green">
+      <strong>With pc_taint:</strong> <code>propagate(Untainted, Tainted) = Tainted</code>. <strong>Correct!</strong>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 22: OWASP SQL Injection -->
+<div class="slide">
+  <h2>OWASP: SQL Injection (CWE-89)</h2>
+  <pre><code>input = get_param("search")            -- SOURCE
+query = "SELECT * FROM t WHERE " + input
+exec_query(query)                       -- SINK: sql-injection</code></pre>
+  <p><strong>Detection pattern:</strong></p>
+  <ul>
+    <li>Source: <code>get_param</code> → Tainted</li>
+    <li>Propagation: string concat spreads taint</li>
+    <li>Sink: <code>exec_query</code> checks param 0</li>
+  </ul>
+  <div class="callout-green">
+    <strong>Fix:</strong> <code>safe_input = escape_sql(input)</code> before building query
+  </div>
+</div>
+
+<!-- Slide 23: OWASP XSS -->
+<div class="slide">
+  <h2>OWASP: XSS (CWE-79)</h2>
+  <pre><code>input = get_param("name")              -- SOURCE
+html  = "&lt;h1&gt;" + input + "&lt;/h1&gt;"
+send_response(html)                     -- SINK: xss</code></pre>
+  <p><strong>Reflected XSS</strong>: user input is echoed directly into the HTML response.</p>
+  <ul>
+    <li><strong>Detection:</strong> <code>send_response</code> with tainted arg → <span class="badge badge-high">xss</span></li>
+    <li><strong>Fix:</strong> <code>safe = html_encode(input)</code> before embedding in HTML</li>
+  </ul>
+</div>
+
+<!-- Slide 24: OWASP Command Injection -->
+<div class="slide">
+  <h2>OWASP: Command Injection (CWE-78)</h2>
+  <pre><code>filename = get_param("file")           -- SOURCE
+cmd = "cat " + filename
+exec_cmd(cmd)                           -- SINK: command-injection</code></pre>
+  <p>If <code>filename = "; rm -rf /"</code>:</p>
+  <pre><code>cat ; rm -rf /</code></pre>
+  <div class="callout-green">
+    <strong>Fix:</strong> <code>safe = shell_escape(filename)</code> or avoid shell commands entirely
+  </div>
+</div>
+
+<!-- Slide 25: Path Traversal + Open Redirect -->
+<div class="slide">
+  <h2>OWASP: Path Traversal + Open Redirect</h2>
+  <div class="cols">
+    <div>
+      <h3>Path Traversal (CWE-22)</h3>
+      <pre><code>path = get_param("page")  -- SOURCE
+open_file(path)           -- SINK</code></pre>
+      <p>If <code>path = "../../etc/passwd"</code><br>→ reads sensitive file</p>
+      <p><strong>Fix:</strong> <code>validate_path(path)</code></p>
+    </div>
+    <div>
+      <h3>Open Redirect (CWE-601)</h3>
+      <pre><code>url = get_param("next")   -- SOURCE
+redirect(url)             -- SINK</code></pre>
+      <p>If <code>url = "https://evil.com"</code><br>→ phishing attack</p>
+      <p><strong>Fix:</strong> <code>validate_url(url)</code></p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 26: Putting It All Together -->
+<div class="slide">
+  <h2>Putting It All Together</h2>
+  <div class="diagram" style="font-size:0.9em;">
+                      Security Config
+                      (sources, sinks, sanitizers)
+                           │
+  AST ──→ Taint Propagation ──→ Sink Checking ──→ Vulnerabilities
+           │                      │                    │
+     eval_expr uses          check_call at          format and
+     config to mark          each Call node          report
+     sources/sanitizers</div>
+  <p><strong>The analysis pipeline:</strong></p>
+  <ol>
+    <li>Parse program → AST (existing infrastructure)</li>
+    <li>Configure sources, sinks, sanitizers</li>
+    <li>Forward taint propagation (abstract interpretation)</li>
+    <li>Check every sink call for tainted arguments</li>
+    <li>Report vulnerabilities with severity and location</li>
+  </ol>
+</div>
+
+<!-- Slide 27: Limitations -->
+<div class="slide">
+  <h2>Limitations and False Positives</h2>
+  <h3>Over-approximation (sound but imprecise)</h3>
+  <ul>
+    <li><code>join Tainted Untainted = Top</code> → treated as tainted</li>
+    <li>Branches where only one path is tainted → both paths get Top</li>
+    <li>Unknown functions → Top (conservative)</li>
+  </ul>
+  <h3>No string tracking</h3>
+  <ul>
+    <li>Can't distinguish <code>"SELECT " + input</code> from <code>"SELECT " + escape_sql(input)</code> at the string level</li>
+    <li>Must rely on sanitizer functions being called explicitly</li>
+  </ul>
+  <h3>No alias analysis</h3>
+  <ul>
+    <li>If <code>x</code> and <code>y</code> point to the same data, tainting <code>x</code> should taint <code>y</code></li>
+    <li>Our analysis treats variables independently</li>
+  </ul>
+</div>
+
+<!-- Slide 28: Summary -->
+<div class="slide">
+  <h2>Summary + Key Takeaways</h2>
+  <ol>
+    <li><strong>Taint analysis</strong> reuses Module 4's abstract interpretation framework</li>
+    <li>The <strong>taint lattice</strong> is a flat 4-element domain (like the sign domain)</li>
+    <li><strong>Sources</strong> create taint, <strong>sinks</strong> check for it, <strong>sanitizers</strong> clean it</li>
+    <li><strong>Explicit flows</strong> follow data, <strong>implicit flows</strong> follow control</li>
+    <li><strong>Vulnerability detection</strong> = taint propagation + sink checking</li>
+  </ol>
+  <h3 style="margin-top:20px;">Real-world tools using these ideas:</h3>
+  <table>
+    <tr><th>Tool</th><th>Approach</th></tr>
+    <tr><td><strong>Semgrep</strong></td><td>Pattern-based taint tracking</td></tr>
+    <tr><td><strong>CodeQL</strong></td><td>Relational dataflow analysis</td></tr>
+    <tr><td><strong>FlowDroid</strong></td><td>Android taint analysis</td></tr>
+    <tr><td><strong>Infer</strong></td><td>Facebook's abstract interpretation engine</td></tr>
+  </table>
+</div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button id="prev" onclick="go(-1)">← Prev</button>
+  <button id="next" onclick="go(1)">Next →</button>
+</div>
+
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  function go(d) { show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+
+  // Touch swipe support
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>

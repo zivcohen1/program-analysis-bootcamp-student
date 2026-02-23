@@ -1,0 +1,3 @@
+(library
+ (name ast_transformations)
+ (libraries shared_ast))
