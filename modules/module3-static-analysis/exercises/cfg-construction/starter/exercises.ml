@@ -15,6 +15,32 @@
 
 open Shared_ast.Ast_types
 
+let build_blocks labels blocks =
+  List.fold_left
+    (fun acc (label, block) -> Cfg.StringMap.add label block acc)
+    Cfg.StringMap.empty
+    (List.combine labels blocks)
+
+let split_around_if stmts =
+  let rec aux prefix = function
+    | [] -> failwith "Expected exactly one If statement"
+    | If (cond, then_stmts, else_stmts) :: suffix ->
+        (List.rev prefix, cond, then_stmts, else_stmts, suffix)
+    | stmt :: rest -> aux (stmt :: prefix) rest
+  in
+  aux [] stmts
+
+let split_around_while stmts =
+  let rec aux prefix = function
+    | [] -> failwith "Expected exactly one While statement"
+    | While (cond, body_stmts) :: suffix ->
+        (List.rev prefix, cond, body_stmts, suffix)
+    | stmt :: rest -> aux (stmt :: prefix) rest
+  in
+  aux [] stmts
+
+let wire_edge src dst cfg = Cfg.add_edge cfg src dst
+
 (** Build a CFG for straight-line (sequential) code.
 
     Expected shape:
@@ -30,13 +56,17 @@ open Shared_ast.Ast_types
 
     @param stmts  A flat list of statements with no branches or loops. *)
 let build_cfg_sequential (stmts : stmt list) : Cfg.cfg =
-  (* TODO:
-     1. Create three blocks: "ENTRY" (empty), "B1" (all stmts), "EXIT" (empty)
-     2. Add them to a StringMap
-     3. Build the cfg record (entry = "ENTRY", exit_label = "EXIT")
-     4. Add edges: ENTRY -> B1, B1 -> EXIT *)
-  ignore stmts;
-  failwith "TODO: build_cfg_sequential"
+  let blocks =
+    build_blocks
+      ["ENTRY"; "B1"; "EXIT"]
+      [ Cfg.create_block "ENTRY" [];
+        Cfg.create_block "B1" stmts;
+        Cfg.create_block "EXIT" [] ]
+  in
+  let cfg = { Cfg.entry = "ENTRY"; exit_label = "EXIT"; blocks } in
+  cfg
+  |> wire_edge "ENTRY" "B1"
+  |> wire_edge "B1" "EXIT"
 
 (** Build a CFG for an if-else branch.
 
@@ -72,20 +102,25 @@ let build_cfg_sequential (stmts : stmt list) : Cfg.cfg =
 
     @param stmts  Statement list containing exactly one If statement. *)
 let build_cfg_ifelse (stmts : stmt list) : Cfg.cfg =
-  (* TODO:
-     1. Partition [stmts] to find the If and the statements before/after it.
-        Hint: use a recursive helper or List.fold to split around the If.
-     2. Extract then_stmts and else_stmts from the If node.
-     3. Create blocks: ENTRY, B_cond, B_then, B_else, B_join, EXIT
-     4. Wire edges:
-          ENTRY -> B_cond
-          B_cond -> B_then
-          B_cond -> B_else
-          B_then -> B_join
-          B_else -> B_join
-          B_join -> EXIT *)
-  ignore stmts;
-  failwith "TODO: build_cfg_ifelse"
+  let pre_stmts, _cond, then_stmts, else_stmts, post_stmts = split_around_if stmts in
+  let blocks =
+    build_blocks
+      ["ENTRY"; "B_cond"; "B_then"; "B_else"; "B_join"; "EXIT"]
+      [ Cfg.create_block "ENTRY" [];
+        Cfg.create_block "B_cond" pre_stmts;
+        Cfg.create_block "B_then" then_stmts;
+        Cfg.create_block "B_else" else_stmts;
+        Cfg.create_block "B_join" post_stmts;
+        Cfg.create_block "EXIT" [] ]
+  in
+  let cfg = { Cfg.entry = "ENTRY"; exit_label = "EXIT"; blocks } in
+  cfg
+  |> wire_edge "ENTRY" "B_cond"
+  |> wire_edge "B_cond" "B_then"
+  |> wire_edge "B_cond" "B_else"
+  |> wire_edge "B_then" "B_join"
+  |> wire_edge "B_else" "B_join"
+  |> wire_edge "B_join" "EXIT"
 
 (** Build a CFG for a while loop.
 
@@ -111,16 +146,22 @@ let build_cfg_ifelse (stmts : stmt list) : Cfg.cfg =
 
     @param stmts  Statement list containing exactly one While statement. *)
 let build_cfg_while (stmts : stmt list) : Cfg.cfg =
-  (* TODO:
-     1. Partition [stmts] to find the While and the stmts before/after it.
-     2. Extract the loop body from the While node.
-     3. Create blocks: ENTRY, B_pre, B_cond, B_body, B_post, EXIT
-     4. Wire edges:
-          ENTRY  -> B_pre
-          B_pre  -> B_cond
-          B_cond -> B_body    (loop body)
-          B_cond -> B_post    (loop exit)
-          B_body -> B_cond    (back edge)
-          B_post -> EXIT *)
-  ignore stmts;
-  failwith "TODO: build_cfg_while"
+  let pre_stmts, _cond, body_stmts, post_stmts = split_around_while stmts in
+  let blocks =
+    build_blocks
+      ["ENTRY"; "B_pre"; "B_cond"; "B_body"; "B_post"; "EXIT"]
+      [ Cfg.create_block "ENTRY" [];
+        Cfg.create_block "B_pre" pre_stmts;
+        Cfg.create_block "B_cond" [];
+        Cfg.create_block "B_body" body_stmts;
+        Cfg.create_block "B_post" post_stmts;
+        Cfg.create_block "EXIT" [] ]
+  in
+  let cfg = { Cfg.entry = "ENTRY"; exit_label = "EXIT"; blocks } in
+  cfg
+  |> wire_edge "ENTRY" "B_pre"
+  |> wire_edge "B_pre" "B_cond"
+  |> wire_edge "B_cond" "B_body"
+  |> wire_edge "B_cond" "B_post"
+  |> wire_edge "B_body" "B_cond"
+  |> wire_edge "B_post" "EXIT"
